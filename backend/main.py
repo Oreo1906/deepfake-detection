@@ -3,14 +3,22 @@ Deepfake Detection API — Ensemble of 5 Forensic Models
 Hosts on Render/Railway, frontend on Netlify.
 """
 
-import os, io, cv2, torch, numpy as np, mediapipe as mp
+import os, io, cv2, torch, numpy as np, mediapipe as mp, sys
 import torch.nn as nn
 import torchvision.transforms as T
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from contextlib import asynccontextmanager
+
+# Make sure we can import from the same directory
+backend_dir = os.path.dirname(os.path.abspath(__file__))
+if backend_dir not in sys.path:
+    # Put backend path first so local `models` resolves before any site-packages module.
+    sys.path.insert(0, backend_dir)
+# Project root for model weights
+ROOT = os.path.dirname(backend_dir)
 
 # ── Import model architectures ─────────────────────────────────────
 from models.eye_model import EyeModel
@@ -81,18 +89,12 @@ def _load_weights(model, path):
 
 def load_all_models():
     global geometry_scaler
-    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # Use the robust ROOT defined at the top
+    root = ROOT
+    print(f" [+] Loading models from: {root}")
 
-    # Eye (custom head from user training code)
-    from torchvision.models import efficientnet_b0
-    eye = efficientnet_b0(weights=None)
-    in_feat = eye.classifier[1].in_features
-    eye.classifier = nn.Sequential(
-        nn.Dropout(p=0.4, inplace=True),
-        nn.Linear(in_feat, 256), nn.BatchNorm1d(256),
-        nn.ReLU(inplace=True), nn.Dropout(p=0.2),
-        nn.Linear(256, 2),
-    )
+    # Eye
+    eye = EyeModel(dropout=0.4)
     if _load_weights(eye, os.path.join(root, "eye_model.pth")):
         models["eye"] = eye; print("✅ Eye model loaded")
 
@@ -326,8 +328,8 @@ async def detect(file: UploadFile = File(...)):
     # Extract landmarks from the first detected face
     lms = detection_result.face_landmarks[0]
     h, w = bgr.shape[:2]
-    analyses = {}
-    all_real = []
+    analyses: Dict[str, Any] = {}
+    all_real: List[float] = []
 
     # ── 1. EYE ─────────────────────────────────────────────────────
     if "eye" in models:
