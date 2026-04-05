@@ -40,9 +40,15 @@ geometry_scaler = None  # (mean, std) arrays
 
 
 def get_enabled_models() -> set:
-    raw = os.getenv("ENABLED_MODELS", "all").strip().lower()
+    raw = os.getenv("ENABLED_MODELS")
     valid = {"eye", "lip", "nose", "skin", "geometry"}
-    if not raw or raw == "all":
+    if not raw:
+        if os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID"):
+            return {"eye", "geometry"}
+        return valid
+
+    raw = raw.strip().lower()
+    if raw == "all":
         return valid
     requested = {x.strip() for x in raw.split(",") if x.strip()}
     enabled = requested & valid

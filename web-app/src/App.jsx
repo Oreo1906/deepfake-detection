@@ -61,12 +61,20 @@ export default function App() {
     fd.append('file', file)
     try {
       const r = await fetch(`${API_URL}/detect`, { method: 'POST', body: fd })
-      if (!r.ok) throw new Error(`Server error ${r.status}`)
+      if (!r.ok) {
+        let details = ''
+        try {
+          details = await r.text()
+        } catch {
+          details = ''
+        }
+        throw new Error(`Server error ${r.status}${details ? `: ${details}` : ''}`)
+      }
       const data = await r.json()
       setResult(data)
       if (data.face_detected) setHistory(h => [data, ...h].slice(0, 8))
     } catch (err) {
-      setError('Cannot reach the detection server. Make sure the Python API is running.')
+      setError(`Cannot reach the detection server at ${API_URL}/detect. ${err.message || 'Make sure the Python API is running.'}`)
       console.error(err)
     } finally {
       setScanning(false)
