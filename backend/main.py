@@ -38,6 +38,19 @@ norm    = T.Normalize(**IN)
 models: Dict[str, nn.Module] = {}
 geometry_scaler = None  # (mean, std) arrays
 
+
+def get_enabled_models() -> set:
+    raw = os.getenv("ENABLED_MODELS", "all").strip().lower()
+    valid = {"eye", "lip", "nose", "skin", "geometry"}
+    if not raw or raw == "all":
+        return valid
+    requested = {x.strip() for x in raw.split(",") if x.strip()}
+    enabled = requested & valid
+    if not enabled:
+        print("⚠️  ENABLED_MODELS had no valid entries. Falling back to all models.")
+        return valid
+    return enabled
+
 # ── MediaPipe indices ──────────────────────────────────────────────
 LEFT_EYE  = [33,7,163,144,145,153,154,155,133,173,157,158,159,160,161,246]
 RIGHT_EYE = [362,382,381,380,374,373,390,249,263,466,388,387,386,385,384,398]
@@ -91,39 +104,52 @@ def load_all_models():
     global geometry_scaler
     # Use the robust ROOT defined at the top
     root = ROOT
+    enabled = get_enabled_models()
     print(f" [+] Loading models from: {root}")
+    print(f" [+] Enabled models: {', '.join(sorted(enabled))}")
 
     # Eye
-    eye = EyeModel(dropout=0.4)
-    if _load_weights(eye, os.path.join(root, "eye_model.pth")):
-        models["eye"] = eye; print("✅ Eye model loaded")
+    if "eye" in enabled:
+        eye = EyeModel(dropout=0.4)
+        if _load_weights(eye, os.path.join(root, "eye_model.pth")):
+            models["eye"] = eye
+            print("✅ Eye model loaded")
 
     # Lip
-    lip = LipModel(dropout=0.4)
-    if _load_weights(lip, os.path.join(root, "lip_model.pth")):
-        models["lip"] = lip; print("✅ Lip model loaded")
+    if "lip" in enabled:
+        lip = LipModel(dropout=0.4)
+        if _load_weights(lip, os.path.join(root, "lip_model.pth")):
+            models["lip"] = lip
+            print("✅ Lip model loaded")
 
     # Nose
-    nose = NoseModel(dropout=0.4)
-    if _load_weights(nose, os.path.join(root, "nose_model.pth")):
-        models["nose"] = nose; print("✅ Nose model loaded")
+    if "nose" in enabled:
+        nose = NoseModel(dropout=0.4)
+        if _load_weights(nose, os.path.join(root, "nose_model.pth")):
+            models["nose"] = nose
+            print("✅ Nose model loaded")
 
     # Skin
-    skin = SkinModel(dropout=0.4)
-    if _load_weights(skin, os.path.join(root, "skin_model.pth")):
-        models["skin"] = skin; print("✅ Skin model loaded")
+    if "skin" in enabled:
+        skin = SkinModel(dropout=0.4)
+        if _load_weights(skin, os.path.join(root, "skin_model.pth")):
+            models["skin"] = skin
+            print("✅ Skin model loaded")
 
     # Geometry
-    geom = GeometryClassifier(input_dim=52, dropout=0.3)
-    if _load_weights(geom, os.path.join(root, "geometry_model.pth")):
-        models["geometry"] = geom; print("✅ Geometry model loaded")
+    if "geometry" in enabled:
+        geom = GeometryClassifier(input_dim=52, dropout=0.3)
+        if _load_weights(geom, os.path.join(root, "geometry_model.pth")):
+            models["geometry"] = geom
+            print("✅ Geometry model loaded")
 
     # Scaler for geometry
-    scaler_path = os.path.join(root, "geometry_scaler.npy")
-    if os.path.exists(scaler_path):
-        s = np.load(scaler_path)
-        geometry_scaler = (s[0], s[1])
-        print("✅ Geometry scaler loaded")
+    if "geometry" in enabled:
+        scaler_path = os.path.join(root, "geometry_scaler.npy")
+        if os.path.exists(scaler_path):
+            s = np.load(scaler_path)
+            geometry_scaler = (s[0], s[1])
+            print("✅ Geometry scaler loaded")
 
 # ═══════════════════════════════════════════════════════════════════
 #  PREPROCESSING HELPERS (from user code)
