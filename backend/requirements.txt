@@ -3,7 +3,7 @@ uvicorn
 python-multipart
 pillow
 opencv-python-headless
-mediapipe
+mediapipe==0.10.14
 torch
 torchvision
 numpy

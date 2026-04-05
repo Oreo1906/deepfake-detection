@@ -1,0 +1,16 @@
+.git
+.gitignore
+.venv
+.vscode
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.ipynb
+web-app/node_modules
+web-app/dist
+models
+android_models
+inspect_output.txt
+keys_*.txt
+*.md
