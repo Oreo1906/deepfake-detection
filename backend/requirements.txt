@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+python-multipart
+pillow
+opencv-python-headless
+mediapipe
+torch
+torchvision
+numpy
+scikit-learn
